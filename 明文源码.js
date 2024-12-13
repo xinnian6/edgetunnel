@@ -50,15 +50,57 @@ export default {
 		try {
 			const UA = request.headers.get('User-Agent') || 'null';
 			const userAgent = UA.toLowerCase();
-			userID = env.UUID || env.uuid || env.PASSWORD || env.pswd || userID;
-			if (env.KEY || env.TOKEN || (userID && !isValidUUID(userID))) {
-				动态UUID = env.KEY || env.TOKEN || userID;
-				有效时间 = Number(env.TIME) || 有效时间;
-				更新时间 = Number(env.UPTIME) || 更新时间;
-				const userIDs = await 生成动态UUID(动态UUID);
-				userID = userIDs[0];
-				userIDLow = userIDs[1];
-			}
+			// 新增 fetchUUIDFromLink 函数
+async function fetchUUIDFromLink(uuidLink) {
+    try {
+        const response = await fetch(uuidLink, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0',
+                'Accept': 'text/plain'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`获取 UUID 失败，状态码: ${response.status}`);
+        }
+
+        const uuid = await response.text();
+        console.log('获取的 UUID:', uuid);
+
+        // 验证 UUID 格式
+        if (!isValidUUID(uuid.trim())) {
+            throw new Error('获取的 UUID 格式不正确');
+        }
+
+        return uuid.trim(); 
+    } catch (error) {
+        console.error('获取 UUID 详细错误:', error);
+        return null; 
+    }
+}
+
+// 替换原有的 userID 获取逻辑
+userID = env.UUID || env.uuid || env.PASSWORD || env.psw || userID;
+
+// 如果 userID 是一个链接，尝试获取真实 UUID
+if (userID.startsWith('http://') || userID.startsWith('https://')) {
+    const fetchedUUID = await fetchUUIDFromLink(userID);
+    if (fetchedUUID) {
+        userID = fetchedUUID;
+    }
+}
+
+// 处理动态 UUID 逻辑
+if (env.KEY || env.TOKEN || (userID && !isValidUUID(userID))) {
+    动态UUID = env.KEY || env.TOKEN || userID;
+    有效时间 = Number(env.TIME) || 有效时间;
+    更新时间 = Number(env.UPTIME) || 更新时间;
+    const userIDs = await 生成动态UUID(动态UUID);
+    userID = userIDs[0];
+    userIDLow = userIDs[1];
+}
+
 
 			if (!userID) {
 				return new Response('请设置你的UUID变量，或尝试重试部署，检查变量是否生效？', { 
